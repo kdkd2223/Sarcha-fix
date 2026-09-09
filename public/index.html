@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Arca-13 Admin</title>
+  <link rel="stylesheet" href="/styles.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+</head>
+<body>
+  <div id="app">
+    <!-- Login -->
+    <div id="login-view" class="login-view hidden">
+      <div class="login-card">
+        <div class="login-logo">
+          <div class="logo-mark">A13</div>
+          <h1>Arca-13</h1>
+          <p>Админ-панель</p>
+        </div>
+        <form id="login-form">
+          <div class="form-group">
+            <label for="username">Логин</label>
+            <input type="text" id="username" name="username" autocomplete="username" required />
+          </div>
+          <div class="form-group">
+            <label for="password">Пароль</label>
+            <input type="password" id="password" name="password" autocomplete="current-password" required />
+          </div>
+          <div id="login-error" class="error-msg hidden"></div>
+          <button type="submit" class="btn btn-primary btn-block">Войти</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Main layout -->
+    <div id="main-view" class="main-view hidden">
+      <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+          <div class="logo-mark small">A13</div>
+          <span>Arca-13</span>
+          <button class="sidebar-close" id="sidebar-close" aria-label="Close">×</button>
+        </div>
+        <nav class="sidebar-nav">
+          <a href="#/dashboard" data-page="dashboard" class="nav-item active">
+            <span class="nav-icon">🏠</span> Главная
+          </a>
+          <a href="#/notes" data-page="notes" class="nav-item">
+            <span class="nav-icon">📝</span> Заметки
+          </a>
+          <a href="#/news" data-page="news" class="nav-item">
+            <span class="nav-icon">📢</span> Новости
+          </a>
+          <a href="#/events" data-page="events" class="nav-item">
+            <span class="nav-icon">📅</span> События
+          </a>
+          <a href="#/rules" data-page="rules" class="nav-item">
+            <span class="nav-icon">📚</span> Правила
+          </a>
+          <a href="#/stats" data-page="stats" class="nav-item" data-perm="view_stats">
+            <span class="nav-icon">📊</span> Статистика
+          </a>
+          <a href="#/logs" data-page="logs" class="nav-item" data-perm="view_logs">
+            <span class="nav-icon">📜</span> Журнал
+          </a>
+          <a href="#/notifications" data-page="notifications" class="nav-item">
+            <span class="nav-icon">🔔</span> Уведомления
+            <span id="notif-badge" class="badge hidden">0</span>
+          </a>
+          <a href="#/roster" data-page="roster" class="nav-item">
+            <span class="nav-icon">👥</span> Состав
+          </a>
+          <a href="#/admins" data-page="admins" class="nav-item" data-perm="manage_admins">
+            <span class="nav-icon">⚙️</span> Управление
+          </a>
+        </nav>
+        <div class="sidebar-footer">
+          <div class="user-info">
+            <div class="user-name" id="sidebar-name">—</div>
+            <div class="user-role" id="sidebar-role">—</div>
+          </div>
+          <button id="logout-btn" class="btn btn-ghost btn-sm">Выйти</button>
+        </div>
+      </aside>
+
+      <div class="content-wrap">
+        <header class="topbar">
+          <button class="menu-toggle" id="menu-toggle" aria-label="Menu">☰</button>
+          <h2 id="page-title">Главная</h2>
+          <div class="topbar-right">
+            <span id="topbar-user"></span>
+          </div>
+        </header>
+        <main id="page-content" class="page-content">
+          <!-- dynamic content -->
+        </main>
+      </div>
+    </div>
+  </div>
+
+  <div id="modal-root"></div>
+  <script src="/app.js"></script>
+</body>
+</html>
