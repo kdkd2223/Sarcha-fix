@@ -179,6 +179,11 @@ function ensureSidebarBackdrop() {
     backdrop = document.createElement('div');
     backdrop.id = 'sidebar-backdrop';
     backdrop.className = 'sidebar-backdrop';
+    // Inline styles as a safety net in case styles.css is cached/stale
+    Object.assign(backdrop.style, {
+      position: 'fixed', inset: '0', background: 'rgba(0,0,0,0.5)',
+      zIndex: '90', display: 'none'
+    });
     document.body.appendChild(backdrop);
     backdrop.addEventListener('click', closeSidebar);
   }
@@ -186,25 +191,48 @@ function ensureSidebarBackdrop() {
 }
 
 function openSidebar() {
-  $('#sidebar').classList.add('open');
+  const sidebar = $('#sidebar');
+  sidebar.classList.add('open');
+  sidebar.style.transform = 'translateX(0)';
+  sidebar.style.zIndex = '1000';
   $('#menu-toggle').classList.add('active');
-  ensureSidebarBackdrop().classList.add('open');
+  $('#menu-toggle').style.zIndex = '1001';
+  const backdrop = ensureSidebarBackdrop();
+  backdrop.classList.add('open');
+  backdrop.style.display = 'block';
   document.body.style.overflow = 'hidden';
 }
 
 function closeSidebar() {
-  $('#sidebar').classList.remove('open');
+  const sidebar = $('#sidebar');
+  sidebar.classList.remove('open');
+  sidebar.style.transform = '';
+  sidebar.style.zIndex = '';
   $('#menu-toggle').classList.remove('active');
-  $('#sidebar-backdrop')?.classList.remove('open');
+  $('#menu-toggle').style.zIndex = '';
+  const backdrop = $('#sidebar-backdrop');
+  if (backdrop) {
+    backdrop.classList.remove('open');
+    backdrop.style.display = 'none';
+  }
   document.body.style.overflow = '';
 }
 
-$('#menu-toggle').addEventListener('click', () => {
+$('#menu-toggle').addEventListener('click', (e) => {
+  e.stopPropagation();
   $('#sidebar').classList.contains('open') ? closeSidebar() : openSidebar();
 });
 $('#sidebar-close').addEventListener('click', closeSidebar);
 $$('.nav-item').forEach(el => {
   el.addEventListener('click', closeSidebar);
+});
+// Safety net: tap/click anywhere outside the open sidebar closes it,
+// even if the backdrop element fails to render for any reason.
+document.addEventListener('click', (e) => {
+  const sidebar = $('#sidebar');
+  if (!sidebar.classList.contains('open')) return;
+  if (sidebar.contains(e.target) || $('#menu-toggle').contains(e.target)) return;
+  closeSidebar();
 });
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') closeSidebar();
