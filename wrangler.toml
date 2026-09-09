@@ -1,9 +1,10 @@
-name = "sarcai"
+name = "sarcha-fix"
 main = "index.js"
 compatibility_date = "2026-09-09"
 
 [assets]
 directory = "./public"
+binding = "ASSETS"
 # Критично: без этого Cloudflare может отдавать index.html на /api/* запросы
 # напрямую со слоя статики, минуя Worker — из-за этого сайт показывал
 # "list.map is not a function" и "data.admin is undefined" (JSON не приходил).
