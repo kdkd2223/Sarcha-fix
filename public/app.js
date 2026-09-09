@@ -187,12 +187,16 @@ function ensureSidebarBackdrop() {
 
 function openSidebar() {
   $('#sidebar').classList.add('open');
+  $('#menu-toggle').classList.add('active');
   ensureSidebarBackdrop().classList.add('open');
+  document.body.style.overflow = 'hidden';
 }
 
 function closeSidebar() {
   $('#sidebar').classList.remove('open');
+  $('#menu-toggle').classList.remove('active');
   $('#sidebar-backdrop')?.classList.remove('open');
+  document.body.style.overflow = '';
 }
 
 $('#menu-toggle').addEventListener('click', () => {
