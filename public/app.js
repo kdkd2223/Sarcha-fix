@@ -1,3 +1,4 @@
+// SIDEBAR_FIX_MARKER_v4
 const $ = (sel, el = document) => el.querySelector(sel);
 const $$ = (sel, el = document) => [...el.querySelectorAll(sel)];
 
@@ -193,7 +194,16 @@ $('#menu-toggle').addEventListener('click', (e) => {
 });
 $('#sidebar-close').addEventListener('click', closeSidebar);
 $$('.nav-item').forEach(el => {
-  el.addEventListener('click', closeSidebar);
+  el.addEventListener('click', (e) => {
+    e.preventDefault();
+    const href = el.getAttribute('href'); // e.g. "#/events"
+    closeSidebar();
+    if (location.hash === href) {
+      route(); // hash unchanged -> hashchange won't fire, render manually
+    } else {
+      location.hash = href;
+    }
+  });
 });
 // Tap/click anywhere outside the open sidebar closes it.
 document.addEventListener('click', (e) => {
