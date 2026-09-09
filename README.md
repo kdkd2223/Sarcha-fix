@@ -45,16 +45,7 @@ npx wrangler d1 execute arca13-admin-db --local --file=./migrations/0001_init.sq
 npx wrangler d1 execute arca13-admin-db --file=./migrations/0001_init.sql
 ```
 
-### 3. Секрет сессий
-
-В `wrangler.toml` замените `SESSION_SECRET` на длинную случайную строку  
-или задайте через:
-
-```bash
-npx wrangler secret put SESSION_SECRET
-```
-
-### 4. Локальная разработка
+### 3. Локальная разработка
 
 ```bash
 npx wrangler dev
@@ -62,7 +53,7 @@ npx wrangler dev
 
 Откройте http://localhost:8787
 
-### 5. Деплой
+### 4. Деплой
 
 ```bash
 npx wrangler deploy
@@ -72,21 +63,20 @@ npx wrangler deploy
 
 ## Первый вход
 
-- **Логин:** `ga`
-- **Пароль:** `ChangeMe123!`
-
-**Сразу смените пароль** через раздел «Управление» (или создайте нового ГА и удалите этот аккаунт).
+При первом открытии сайта (пока в базе нет ни одного администратора) вместо формы
+входа автоматически показывается экран **первичной настройки** — там вы сами
+задаёте логин, пароль и имя для первого аккаунта ГА. Никакой пароль по умолчанию
+в коде не хранится.
 
 ## Структура проекта
 
 ```
 arca13-admin/
-├── wrangler.toml          # Конфиг Workers + D1
+├── wrangler.toml          # Конфиг Workers + D1 (run_worker_first = true — обязательно!)
 ├── package.json
+├── index.js               # Backend API (Workers)
 ├── migrations/
-│   └── 0001_init.sql      # Схема БД + начальные данные
-├── src/
-│   └── index.js           # Backend API (Workers)
+│   └── 0001_init.sql      # Схема БД
 └── public/
     ├── index.html
     ├── styles.css

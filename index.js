@@ -140,6 +140,44 @@ async function createNotificationForAll(env, type, title, message, relatedType =
   }
 }
 
+// ---- Первичная настройка (создание первого аккаунта ГА) ----
+async function handleSetupStatus(request, env) {
+  const row = await env.DB.prepare(`SELECT COUNT(*) as c FROM admins`).first();
+  return json({ needsSetup: row.c === 0 });
+}
+
+async function handleSetup(request, env) {
+  if (request.method !== 'POST') return error('Method not allowed', 405);
+  const row = await env.DB.prepare(`SELECT COUNT(*) as c FROM admins`).first();
+  if (row.c > 0) return error('Настройка уже выполнена', 403);
+
+  let body;
+  try {
+    body = await request.json();
+  } catch {
+    return error('Invalid JSON');
+  }
+  const { username, password, display_name } = body;
+  if (!username || !/^[a-zA-Z0-9_.-]{3,32}$/.test(username)) {
+    return error('Логин: 3-32 символа, латиница/цифры/._-');
+  }
+  if (!password || password.length < 8) {
+    return error('Пароль должен быть не короче 8 символов');
+  }
+  if (!display_name || display_name.trim().length < 2) {
+    return error('Укажите отображаемое имя');
+  }
+
+  const hash = await hashPassword(password);
+  const res = await env.DB.prepare(
+    `INSERT INTO admins (username, password_hash, display_name, role, status) VALUES (?, ?, ?, 'GA', 'active')`
+  ).bind(username.trim(), hash, display_name.trim()).run();
+
+  await logAction(env, res.meta.last_row_id, 'setup', 'admin', res.meta.last_row_id, 'Создан первый аккаунт ГА');
+
+  return json({ ok: true });
+}
+
 async function handleLogin(request, env) {
   if (request.method !== 'POST') return error('Method not allowed', 405);
   let body;
@@ -787,6 +825,12 @@ export default {
     // API routes
     if (path.startsWith('/api/')) {
       try {
+        if (path === '/api/setup/status') {
+          return await handleSetupStatus(request, env);
+        }
+        if (path === '/api/setup' && request.method === 'POST') {
+          return await handleSetup(request, env);
+        }
         if (path === '/api/login' && request.method === 'POST') {
           return await handleLogin(request, env);
         }
