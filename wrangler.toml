@@ -1,0 +1,11 @@
+name = "sarcai"
+main = "index.js"
+compatibility_date = "2026-09-09"
+
+[assets]
+directory = "./public"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "arca"
+database_id = "05f5914f-eae3-47a6-87c2-bc9a2a203d62"
