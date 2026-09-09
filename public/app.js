@@ -195,7 +195,9 @@ function closeSidebar() {
   $('#sidebar-backdrop')?.classList.remove('open');
 }
 
-$('#menu-toggle').addEventListener('click', openSidebar);
+$('#menu-toggle').addEventListener('click', () => {
+  $('#sidebar').classList.contains('open') ? closeSidebar() : openSidebar();
+});
 $('#sidebar-close').addEventListener('click', closeSidebar);
 $$('.nav-item').forEach(el => {
   el.addEventListener('click', closeSidebar);

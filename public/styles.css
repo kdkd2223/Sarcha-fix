@@ -923,12 +923,12 @@ tbody tr:last-child td { border-bottom: none; }
   position: fixed;
   inset: 0;
   background: rgba(0,0,0,0.5);
-  z-index: 40;
+  z-index: 90;
 }
 .sidebar-backdrop.open { display: block; }
 
 @media (max-width: 768px) {
-  .sidebar { transform: translateX(-100%); z-index: 50; }
+  .sidebar { transform: translateX(-100%); z-index: 100; }
   .sidebar.open { transform: translateX(0); }
   .sidebar-close { display: block; }
   .content-wrap { margin-left: 0; }
