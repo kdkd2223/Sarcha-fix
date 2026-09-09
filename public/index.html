@@ -11,6 +11,33 @@
 </head>
 <body>
   <div id="app">
+    <!-- Первичная настройка: показывается только если в базе нет ни одного администратора -->
+    <div id="setup-view" class="login-view hidden">
+      <div class="login-card">
+        <div class="login-logo">
+          <div class="logo-mark">A13</div>
+          <h1>Arca-13</h1>
+          <p>Первичная настройка — создайте аккаунт ГА</p>
+        </div>
+        <form id="setup-form">
+          <div class="form-group">
+            <label for="setup-display-name">Отображаемое имя</label>
+            <input type="text" id="setup-display-name" required />
+          </div>
+          <div class="form-group">
+            <label for="setup-username">Логин</label>
+            <input type="text" id="setup-username" autocomplete="username" required />
+          </div>
+          <div class="form-group">
+            <label for="setup-password">Пароль</label>
+            <input type="password" id="setup-password" autocomplete="new-password" required minlength="8" />
+          </div>
+          <div id="setup-error" class="error-msg hidden"></div>
+          <button type="submit" class="btn btn-primary btn-block">Создать аккаунт ГА</button>
+        </form>
+      </div>
+    </div>
+
     <!-- Login -->
     <div id="login-view" class="login-view hidden">
       <div class="login-card">

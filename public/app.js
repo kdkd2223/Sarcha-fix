@@ -82,7 +82,14 @@ function escapeHtml(s) {
 }
 
 function showLogin() {
+  $('#setup-view').classList.add('hidden');
   $('#login-view').classList.remove('hidden');
+  $('#main-view').classList.add('hidden');
+}
+
+function showSetup() {
+  $('#login-view').classList.add('hidden');
+  $('#setup-view').classList.remove('hidden');
   $('#main-view').classList.add('hidden');
 }
 
@@ -110,6 +117,13 @@ async function checkAuth() {
     route();
     loadNotifBadge();
   } catch {
+    try {
+      const status = await api('/setup/status');
+      if (status.needsSetup) {
+        showSetup();
+        return;
+      }
+    } catch {}
     showLogin();
   }
 }
@@ -128,6 +142,25 @@ $('#login-form').addEventListener('submit', async (e) => {
     await checkAuth();
   } catch (err) {
     errEl.textContent = err.message || 'Ошибка входа';
+    errEl.classList.remove('hidden');
+  }
+});
+
+$('#setup-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const errEl = $('#setup-error');
+  errEl.classList.add('hidden');
+  const display_name = $('#setup-display-name').value.trim();
+  const username = $('#setup-username').value.trim();
+  const password = $('#setup-password').value;
+  try {
+    await api('/setup', { method: 'POST', body: { username, password, display_name } });
+    // Аккаунт создан — сразу входим под ним
+    const data = await api('/login', { method: 'POST', body: { username, password } });
+    state.admin = data.admin;
+    await checkAuth();
+  } catch (err) {
+    errEl.textContent = err.message || 'Ошибка настройки';
     errEl.classList.remove('hidden');
   }
 });
