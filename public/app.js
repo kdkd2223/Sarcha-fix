@@ -173,16 +173,35 @@ $('#logout-btn').addEventListener('click', async () => {
 });
 
 // ---- Sidebar mobile ----
-$('#menu-toggle').addEventListener('click', () => {
+function ensureSidebarBackdrop() {
+  let backdrop = $('#sidebar-backdrop');
+  if (!backdrop) {
+    backdrop = document.createElement('div');
+    backdrop.id = 'sidebar-backdrop';
+    backdrop.className = 'sidebar-backdrop';
+    document.body.appendChild(backdrop);
+    backdrop.addEventListener('click', closeSidebar);
+  }
+  return backdrop;
+}
+
+function openSidebar() {
   $('#sidebar').classList.add('open');
-});
-$('#sidebar-close').addEventListener('click', () => {
+  ensureSidebarBackdrop().classList.add('open');
+}
+
+function closeSidebar() {
   $('#sidebar').classList.remove('open');
-});
+  $('#sidebar-backdrop')?.classList.remove('open');
+}
+
+$('#menu-toggle').addEventListener('click', openSidebar);
+$('#sidebar-close').addEventListener('click', closeSidebar);
 $$('.nav-item').forEach(el => {
-  el.addEventListener('click', () => {
-    $('#sidebar').classList.remove('open');
-  });
+  el.addEventListener('click', closeSidebar);
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') closeSidebar();
 });
 
 // ---- Modal ----
