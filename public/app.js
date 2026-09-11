@@ -5,9 +5,7 @@ const $$ = (sel, el = document) => [...el.querySelectorAll(sel)];
 const state = {
   admin: null,
   permissions: {},
-  page: 'dashboard',
-  clearance: null,
-  pollTimer: null
+  page: 'dashboard'
 };
 
 const PAGE_TITLES = {
@@ -16,21 +14,12 @@ const PAGE_TITLES = {
   news: 'Новости',
   events: 'События / Собрания',
   rules: 'Правила администрации',
+  commands: 'Команды Juniper Discord Bot',
   stats: 'Статистика',
   logs: 'Журнал действий',
   notifications: 'Уведомления',
   roster: 'Состав администрации',
-  admins: 'Управление администраторами',
-  profile: 'Профиль',
-  scp: 'SCP Database',
-  terminal: 'SCP Terminal'
-};
-
-const CLEARANCE_BY_ROLE = {
-  GA: { level: 5, label: 'LEVEL-5 · Administrator' },
-  ZGA: { level: 4, label: 'LEVEL-4 · Command Access' },
-  SENIOR: { level: 3, label: 'LEVEL-3 · Personnel Access' },
-  MODERATOR: { level: 2, label: 'LEVEL-2 · Research Access' }
+  admins: 'Управление администраторами'
 };
 
 const ROLE_PILL = {
@@ -48,6 +37,36 @@ const CATEGORY_LABELS = {
   discord: 'Discord',
   other: 'Другие инструкции'
 };
+
+// ---- Juniper Discord Bot commands (static reference data, no backend needed) ----
+const BOT_COMMAND_CATEGORIES = {
+  info: '📚 Информация и справка',
+  moderation: '🛡️ Модерация'
+};
+
+const BOT_COMMANDS = [
+  { cat: 'info', cmd: '!help', desc: 'Показывает список всех доступных команд бота.', example: '!help' },
+  { cat: 'info', cmd: '!info', desc: 'Общая информация о боте Juniper и его возможностях.', example: '!info' },
+  { cat: 'info', cmd: '!stats', desc: 'Показывает статистику сервера и бота.', example: '!stats' },
+  { cat: 'info', cmd: '!serverinfo', desc: 'Подробная информация о сервере: участники, роли, каналы, дата создания.', example: '!serverinfo' },
+  { cat: 'info', cmd: '!user', desc: 'Информация о пользователе: роли, дата входа, аккаунт создан.', example: '!user @Klaus220911' },
+  { cat: 'info', cmd: '!inviteinfo', desc: 'Информация о пригласительной ссылке: кто создал, сколько использований.', example: '!inviteinfo discord.gg/arca13' },
+
+  { cat: 'moderation', cmd: '!mute', desc: 'Заглушает пользователя на указанное время, лишая права писать/говорить.', example: '!mute @user 30m Спам в чате' },
+  { cat: 'moderation', cmd: '!unmute', desc: 'Снимает мут с пользователя раньше срока.', example: '!unmute @user' },
+  { cat: 'moderation', cmd: '!mutes', desc: 'Показывает список всех пользователей, находящихся в муте.', example: '!mutes' },
+  { cat: 'moderation', cmd: '!ban', desc: 'Банит пользователя на сервере с указанием причины.', example: '!ban @user Оскорбления участников' },
+  { cat: 'moderation', cmd: '!unban', desc: 'Снимает бан с пользователя по ID.', example: '!unban 123456789012345678' },
+  { cat: 'moderation', cmd: '!kick', desc: 'Кикает (исключает) пользователя с сервера без бана.', example: '!kick @user Нарушение правил' },
+  { cat: 'moderation', cmd: '!warn', desc: 'Выдаёт предупреждение пользователю с указанием причины.', example: '!warn @user Флуд в общем чате' },
+  { cat: 'moderation', cmd: '!warns', desc: 'Показывает список предупреждений пользователя.', example: '!warns @user' },
+  { cat: 'moderation', cmd: '!remwarn', desc: 'Удаляет конкретное предупреждение у пользователя по номеру.', example: '!remwarn @user 2' },
+  { cat: 'moderation', cmd: '!resetwarns', desc: 'Полностью сбрасывает все предупреждения пользователя.', example: '!resetwarns @user' },
+  { cat: 'moderation', cmd: '!clear', desc: 'Удаляет указанное количество сообщений в канале.', example: '!clear 50' },
+  { cat: 'moderation', cmd: '!slowmode', desc: 'Включает медленный режим в канале (задержка между сообщениями).', example: '!slowmode 10s' },
+  { cat: 'moderation', cmd: '!temprole', desc: 'Выдаёт роль пользователю на ограниченное время.', example: '!temprole @user Event 1d' },
+  { cat: 'moderation', cmd: '!temproles', desc: 'Показывает список всех активных временных ролей.', example: '!temproles' }
+];
 
 async function api(path, options = {}) {
   const opts = {
@@ -108,16 +127,10 @@ function showSetup() {
 
 function showMain() {
   $('#login-view').classList.add('hidden');
-  $('#setup-view').classList.add('hidden');
   $('#main-view').classList.remove('hidden');
   $('#sidebar-name').textContent = state.admin.display_name;
   $('#sidebar-role').textContent = state.admin.role_label || state.admin.role;
   $('#topbar-user').textContent = state.admin.display_name;
-
-  const clr = state.admin.clearance || CLEARANCE_BY_ROLE[state.admin.role] || { level: 1, label: 'LEVEL-1 · Basic Access' };
-  state.clearance = clr;
-  const clrEl = $('#sidebar-clearance');
-  if (clrEl) clrEl.textContent = clr.label || `LEVEL-${clr.level || 1}`;
 
   // Hide nav items without permission
   $$('.nav-item[data-perm]').forEach(el => {
@@ -125,8 +138,6 @@ function showMain() {
     const allowed = state.permissions[perm] || state.permissions.full_access;
     el.style.display = allowed ? '' : 'none';
   });
-
-  startLivePolling();
 }
 
 async function checkAuth() {
@@ -233,7 +244,15 @@ document.addEventListener('click', (e) => {
   closeSidebar();
 });
 document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape') closeSidebar();
+  if (e.key === 'Escape') {
+    closeSidebar();
+    if ($('#modal-root').innerHTML.trim()) closeModal();
+  }
+  // Global search — Ctrl+K / Cmd+K. Modifier combo, safe even while typing elsewhere.
+  if ((e.ctrlKey || e.metaKey) && (e.key === 'k' || e.key === 'K')) {
+    e.preventDefault();
+    openGlobalSearch();
+  }
 });
 
 // ---- Modal ----
@@ -261,6 +280,113 @@ function closeModal() {
   $('#modal-root').innerHTML = '';
 }
 
+// ---- Global Search (Ctrl+K) ----
+// Purely additive: searches data already visible to the user via existing
+// endpoints. No new backend permissions, no data the user couldn't already see.
+let searchIndexCache = null;
+let searchIndexLoading = null;
+
+async function buildSearchIndex() {
+  if (searchIndexCache) return searchIndexCache;
+  if (searchIndexLoading) return searchIndexLoading;
+
+  searchIndexLoading = (async () => {
+    const sources = [
+      { path: '/notes', page: 'notes', label: 'Заметка', field: 'title' },
+      { path: '/news', page: 'news', label: 'Новость', field: 'title' },
+      { path: '/events', page: 'events', label: 'Событие', field: 'title' },
+      { path: '/rules', page: 'rules', label: 'Правило', field: 'title' },
+      { path: '/roster', page: 'roster', label: 'Сотрудник', field: 'display_name' }
+    ];
+    const results = await Promise.allSettled(sources.map(s => api(s.path)));
+    const index = [];
+    results.forEach((res, i) => {
+      if (res.status !== 'fulfilled' || !Array.isArray(res.value)) return;
+      const s = sources[i];
+      res.value.forEach(item => {
+        const text = item[s.field] || item.content || item.username || '';
+        if (!text) return;
+        index.push({
+          id: item.id,
+          page: s.page,
+          category: s.label,
+          title: text,
+          meta: item.content ? String(item.content).slice(0, 80) : (item.role_label || '')
+        });
+      });
+    });
+    searchIndexCache = index;
+    // Also index static Juniper bot commands (no API call needed).
+    BOT_COMMANDS.forEach(c => {
+      index.push({
+        id: c.cmd,
+        page: 'commands',
+        category: 'Команда бота',
+        title: c.cmd,
+        meta: c.desc
+      });
+    });
+    return index;
+  })();
+
+  return searchIndexLoading;
+}
+
+function renderSearchResults(container, query, index) {
+  const q = query.trim().toLowerCase();
+  if (!q) {
+    container.innerHTML = '<div class="empty" style="padding:20px">Начните вводить запрос…</div>';
+    return;
+  }
+  const matches = index.filter(item =>
+    item.title.toLowerCase().includes(q) || (item.meta && item.meta.toLowerCase().includes(q))
+  ).slice(0, 30);
+
+  if (!matches.length) {
+    container.innerHTML = '<div class="empty" style="padding:20px">Ничего не найдено</div>';
+    return;
+  }
+
+  container.innerHTML = matches.map(m => `
+    <div class="list-item search-result" data-page="${escapeHtml(m.page)}" style="cursor:pointer">
+      <div class="list-item-title"><span class="pill">${escapeHtml(m.category)}</span> ${escapeHtml(m.title)}</div>
+      ${m.meta ? `<div class="list-item-meta">${escapeHtml(m.meta)}</div>` : ''}
+    </div>
+  `).join('');
+
+  $$('.search-result', container).forEach(el => {
+    el.addEventListener('click', () => {
+      const page = el.dataset.page;
+      closeModal();
+      location.hash = `/${page}`;
+    });
+  });
+}
+
+async function openGlobalSearch() {
+  const modal = openModal('Поиск (Ctrl+K)', `
+    <input type="text" id="global-search-input" class="search-input" style="width:100%;margin-bottom:14px"
+      placeholder="Заметки, новости, события, правила, сотрудники…" autocomplete="off" />
+    <div id="global-search-results"></div>
+  `);
+  const input = $('#global-search-input', modal);
+  const results = $('#global-search-results', modal);
+  input.focus();
+  results.innerHTML = '<div class="empty" style="padding:20px">Загрузка данных…</div>';
+
+  let debounceTimer = null;
+  try {
+    const index = await buildSearchIndex();
+    results.innerHTML = '<div class="empty" style="padding:20px">Начните вводить запрос…</div>';
+    input.addEventListener('input', () => {
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => renderSearchResults(results, input.value, index), 150);
+    });
+  } catch (e) {
+    results.innerHTML = `<div class="error-msg">Не удалось загрузить данные для поиска</div>`;
+  }
+}
+
 // ---- Router ----
 function route() {
   const hash = location.hash.slice(1) || '/dashboard';
@@ -281,14 +407,12 @@ function route() {
     news: renderNews,
     events: renderEvents,
     rules: renderRules,
+    commands: renderCommands,
     stats: renderStats,
     logs: renderLogs,
     notifications: renderNotifications,
     roster: renderRoster,
-    admins: renderAdmins,
-    profile: renderProfile,
-    scp: renderScp,
-    terminal: renderTerminal
+    admins: renderAdmins
   };
 
   const fn = handlers[page];
@@ -302,52 +426,33 @@ window.addEventListener('hashchange', route);
 async function renderDashboard(el) {
   try {
     const data = await api('/dashboard');
-    let systemStatus = null;
-    try { systemStatus = await api('/system/status'); } catch { /* optional endpoint */ }
-
-    const s = data.stats || {};
-    const clr = state.clearance || CLEARANCE_BY_ROLE[state.admin?.role] || { label: 'LEVEL-1' };
-
     el.innerHTML = `
       <div class="welcome">
         <h1>Привет, ${escapeHtml(data.admin.display_name)}!</h1>
-        <p>${escapeHtml(data.admin.role_label || data.admin.role)} · ${escapeHtml(clr.label || '')} · Arca-13 Admin</p>
+        <p>${escapeHtml(data.admin.role_label)} · Arca-13 Admin</p>
       </div>
-      <div class="grid grid-4" style="margin-bottom:16px">
+      <div class="grid grid-4" style="margin-bottom:24px">
         <div class="card stat-card">
-          <div class="stat-value">${s.admins ?? '—'}</div>
+          <div class="stat-value">${data.stats.admins}</div>
           <div class="stat-label">Администраторов</div>
         </div>
         <div class="card stat-card">
-          <div class="stat-value">${s.notes ?? '—'}</div>
+          <div class="stat-value">${data.stats.notes}</div>
           <div class="stat-label">Заметок</div>
         </div>
         <div class="card stat-card">
-          <div class="stat-value">${s.news ?? '—'}</div>
+          <div class="stat-value">${data.stats.news}</div>
           <div class="stat-label">Новостей</div>
         </div>
         <div class="card stat-card">
-          <div class="stat-value">${s.events ?? '—'}</div>
+          <div class="stat-value">${data.stats.events}</div>
           <div class="stat-label">Событий</div>
-        </div>
-      </div>
-      ${s.scp != null || s.notifications != null || s.actions_today != null ? `
-      <div class="grid grid-4" style="margin-bottom:16px">
-        ${s.scp != null ? `<div class="card stat-card"><div class="stat-value">${s.scp}</div><div class="stat-label">SCP объектов</div></div>` : ''}
-        ${s.notifications != null ? `<div class="card stat-card"><div class="stat-value">${s.notifications}</div><div class="stat-label">Уведомлений</div></div>` : ''}
-        ${s.actions_today != null ? `<div class="card stat-card"><div class="stat-value">${s.actions_today}</div><div class="stat-label">Действий сегодня</div></div>` : ''}
-        ${s.actions_week != null ? `<div class="card stat-card"><div class="stat-value">${s.actions_week}</div><div class="stat-label">За неделю</div></div>` : ''}
-      </div>` : ''}
-      <div class="card" style="margin-bottom:16px">
-        <div class="card-header"><span class="card-title">System Status</span></div>
-        <div class="status-grid" id="system-status-grid">
-          ${renderSystemStatusHtml(systemStatus)}
         </div>
       </div>
       <div class="grid grid-2">
         <div class="card">
           <div class="card-header"><span class="card-title">Ближайшие события</span></div>
-          ${(data.upcoming_events || []).length ? data.upcoming_events.map(e => `
+          ${data.upcoming_events.length ? data.upcoming_events.map(e => `
             <div class="list-item">
               <div class="list-item-title">${escapeHtml(e.title)}</div>
               <div class="list-item-meta">${formatDateOnly(e.event_date)}${e.event_time ? ' · ' + e.event_time : ''} · ${escapeHtml(e.author_name || '')}</div>
@@ -356,7 +461,7 @@ async function renderDashboard(el) {
         </div>
         <div class="card">
           <div class="card-header"><span class="card-title">Последние новости</span></div>
-          ${(data.latest_news || []).length ? data.latest_news.map(n => `
+          ${data.latest_news.length ? data.latest_news.map(n => `
             <div class="list-item">
               <div class="list-item-title">${n.is_pinned ? '📌 ' : ''}${escapeHtml(n.title)}</div>
               <div class="list-item-meta">${formatDate(n.created_at)} · ${escapeHtml(n.author_name || '')}</div>
@@ -370,7 +475,7 @@ async function renderDashboard(el) {
           <table>
             <thead><tr><th>Админ</th><th>Действие</th><th>Объект</th><th>Время</th></tr></thead>
             <tbody>
-              ${(data.recent_actions || []).map(a => `
+              ${data.recent_actions.map(a => `
                 <tr>
                   <td>${escapeHtml(a.admin_name || '—')}</td>
                   <td>${escapeHtml(a.action)}</td>
@@ -382,24 +487,43 @@ async function renderDashboard(el) {
           </table>
         </div>
       </div>
+      <div class="card" style="margin-top:16px">
+        <div class="card-header"><span class="card-title">System Status</span></div>
+        <div id="system-status-body" class="grid grid-3">
+          <div class="empty" style="padding:12px">Проверка…</div>
+        </div>
+      </div>
     `;
+    loadSystemStatus();
   } catch (e) {
     el.innerHTML = `<div class="error-msg">${escapeHtml(e.message)}</div>`;
   }
 }
 
-function renderSystemStatusHtml(status) {
-  const defaults = [
-    { name: 'DATABASE', key: 'database' },
-    { name: 'API', key: 'api' },
-    { name: 'AUTHENTICATION', key: 'auth' },
-    { name: 'SYSTEM', key: 'system' }
-  ];
-  return defaults.map(d => {
-    const val = status && status[d.key] != null ? String(status[d.key]).toUpperCase() : 'ONLINE';
-    const cls = val.includes('OFF') ? 'status-offline' : (val.includes('DEGRAD') ? 'status-degraded' : 'status-online');
-    return `<div class="status-item"><div class="status-name">${d.name}</div><div class="status-value ${cls}">${escapeHtml(val)}</div></div>`;
-  }).join('');
+// ---- System Status widget (additive; failure here never breaks the dashboard) ----
+async function loadSystemStatus() {
+  const box = $('#system-status-body');
+  if (!box) return;
+  try {
+    const s = await api('/system-status');
+    const row = (label, ok, extra = '') => `
+      <div class="list-item">
+        <div class="list-item-title">
+          <span class="pill ${ok ? 'pill-active' : 'pill-blocked'}">${ok ? 'ONLINE' : 'OFFLINE'}</span>
+        </div>
+        <div class="list-item-meta">${escapeHtml(label)}${extra ? ' · ' + escapeHtml(extra) : ''}</div>
+      </div>`;
+    box.innerHTML =
+      row('DATABASE', s.database === 'online', s.db_latency_ms != null ? s.db_latency_ms + ' ms' : '') +
+      row('API', s.api === 'online') +
+      row('AUTHENTICATION', s.authentication === 'online');
+  } catch (e) {
+    box.innerHTML = `
+      <div class="list-item">
+        <div class="list-item-title"><span class="pill pill-blocked">OFFLINE</span></div>
+        <div class="list-item-meta">Не удалось получить статус системы</div>
+      </div>`;
+  }
 }
 
 // ---- Notes ----
@@ -726,6 +850,93 @@ async function renderRules(el) {
   load();
 }
 
+// ---- Juniper Discord Bot commands ----
+async function renderCommands(el) {
+  let activeCat = 'all';
+  let query = '';
+
+  const matches = (c) => {
+    if (activeCat !== 'all' && c.cat !== activeCat) return false;
+    if (!query) return true;
+    const q = query.toLowerCase();
+    return c.cmd.toLowerCase().includes(q) || c.desc.toLowerCase().includes(q);
+  };
+
+  const draw = () => {
+    const list = BOT_COMMANDS.filter(matches);
+
+    el.innerHTML = `
+      <div class="toolbar">
+        <input type="text" id="cmd-search" class="search-input" placeholder="🔍 Поиск по командам (!mute, бан, слоумод...)" value="${escapeHtml(query)}" />
+      </div>
+      <div class="rules-tabs">
+        <button class="rules-tab ${activeCat === 'all' ? 'active' : ''}" data-cat="all">Все команды</button>
+        ${Object.entries(BOT_COMMAND_CATEGORIES).map(([k, v]) => `
+          <button class="rules-tab ${k === activeCat ? 'active' : ''}" data-cat="${k}">${v}</button>
+        `).join('')}
+      </div>
+      <div class="grid grid-2" id="cmd-grid">
+        ${list.length ? list.map((c, i) => `
+          <div class="card cmd-card">
+            <div class="card-header">
+              <span class="card-title cmd-name">${escapeHtml(c.cmd)}</span>
+              <span class="pill ${c.cat === 'moderation' ? 'pill-blocked' : 'pill-active'}">${c.cat === 'moderation' ? 'Модерация' : 'Инфо'}</span>
+            </div>
+            <div class="cmd-desc">${escapeHtml(c.desc)}</div>
+            <div class="cmd-example"><span class="cmd-example-label">Пример:</span> <code>${escapeHtml(c.example)}</code></div>
+            <button class="btn btn-primary btn-block cmd-copy" data-cmd="${escapeHtml(c.cmd)}" data-idx="${i}">📋 Копировать</button>
+          </div>
+        `).join('') : '<div class="empty"><div class="empty-icon">🤖</div>Команды не найдены</div>'}
+      </div>
+    `;
+
+    $('#cmd-search').addEventListener('input', (e) => {
+      query = e.target.value;
+      draw();
+      // keep focus + caret position after re-render
+      const inp = $('#cmd-search');
+      inp.focus();
+      inp.setSelectionRange(inp.value.length, inp.value.length);
+    });
+
+    $$('.rules-tab', el).forEach(t => {
+      t.onclick = () => { activeCat = t.dataset.cat; draw(); };
+    });
+
+    $$('.cmd-copy', el).forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const text = btn.dataset.cmd;
+        try {
+          if (navigator.clipboard && window.isSecureContext) {
+            await navigator.clipboard.writeText(text);
+          } else {
+            const ta = document.createElement('textarea');
+            ta.value = text;
+            ta.style.position = 'fixed';
+            ta.style.opacity = '0';
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand('copy');
+            document.body.removeChild(ta);
+          }
+          const original = btn.textContent;
+          btn.textContent = '✅ Скопировано!';
+          btn.disabled = true;
+          setTimeout(() => {
+            btn.textContent = original;
+            btn.disabled = false;
+          }, 1400);
+        } catch (e) {
+          btn.textContent = '⚠ Не удалось скопировать';
+          setTimeout(() => { btn.textContent = '📋 Копировать'; }, 1400);
+        }
+      });
+    });
+  };
+
+  draw();
+}
+
 // ---- Stats ----
 async function renderStats(el) {
   try {
@@ -772,70 +983,35 @@ async function renderStats(el) {
   }
 }
 
-// ---- Logs (Audit) ----
+// ---- Logs ----
 async function renderLogs(el) {
-  let page = 1;
-  let filters = { user: '', action: '', object: '' };
-
-  const load = async () => {
-    try {
-      const params = new URLSearchParams({ limit: '50', page: String(page) });
-      if (filters.user) params.set('user', filters.user);
-      if (filters.action) params.set('action', filters.action);
-      if (filters.object) params.set('object', filters.object);
-      const list = await api('/logs?' + params.toString());
-      const rows = Array.isArray(list) ? list : (list.items || []);
-      const totalPages = list.total_pages || 1;
-
-      el.innerHTML = `
-        <div class="logs-filters">
-          <input type="text" id="log-user" placeholder="Пользователь" value="${escapeHtml(filters.user)}" />
-          <input type="text" id="log-action" placeholder="Действие" value="${escapeHtml(filters.action)}" />
-          <input type="text" id="log-object" placeholder="Объект" value="${escapeHtml(filters.object)}" />
-          <button class="btn btn-primary btn-sm" id="log-apply">Фильтр</button>
-          <button class="btn btn-ghost btn-sm" id="log-reset">Сброс</button>
+  try {
+    const list = await api('/logs?limit=150');
+    el.innerHTML = `
+      <div class="card">
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Админ</th><th>Действие</th><th>Тип</th><th>Детали</th><th>Время</th></tr>
+            </thead>
+            <tbody>
+              ${list.map(a => `
+                <tr>
+                  <td>${escapeHtml(a.admin_name || '—')}</td>
+                  <td>${escapeHtml(a.action)}</td>
+                  <td>${escapeHtml(a.target_type || '—')}</td>
+                  <td>${escapeHtml(a.details || '—')}</td>
+                  <td>${formatDate(a.created_at)}</td>
+                </tr>
+              `).join('') || '<tr><td colspan="5">Нет записей</td></tr>'}
+            </tbody>
+          </table>
         </div>
-        <div class="card">
-          <div class="table-wrap">
-            <table>
-              <thead>
-                <tr><th>Админ</th><th>Действие</th><th>Тип</th><th>Детали</th><th>Время</th></tr>
-              </thead>
-              <tbody>
-                ${rows.map(a => `
-                  <tr>
-                    <td>${escapeHtml(a.admin_name || '—')}</td>
-                    <td>${escapeHtml(a.action)}</td>
-                    <td>${escapeHtml(a.target_type || '—')}</td>
-                    <td>${escapeHtml(a.details || '—')}</td>
-                    <td>${formatDate(a.created_at)}</td>
-                  </tr>
-                `).join('') || '<tr><td colspan="5">Нет записей</td></tr>'}
-              </tbody>
-            </table>
-          </div>
-          <div class="pagination">
-            <button class="btn btn-ghost btn-sm" id="log-prev" ${page <= 1 ? 'disabled' : ''}>←</button>
-            <span>Стр. ${page}${totalPages > 1 ? ' / ' + totalPages : ''}</span>
-            <button class="btn btn-ghost btn-sm" id="log-next" ${page >= totalPages ? 'disabled' : ''}>→</button>
-          </div>
-        </div>
-      `;
-      $('#log-apply').onclick = () => {
-        filters.user = $('#log-user').value.trim();
-        filters.action = $('#log-action').value.trim();
-        filters.object = $('#log-object').value.trim();
-        page = 1;
-        load();
-      };
-      $('#log-reset').onclick = () => { filters = { user: '', action: '', object: '' }; page = 1; load(); };
-      $('#log-prev')?.addEventListener('click', () => { if (page > 1) { page--; load(); } });
-      $('#log-next')?.addEventListener('click', () => { page++; load(); });
-    } catch (e) {
-      el.innerHTML = `<div class="error-msg">${escapeHtml(e.message)}</div>`;
-    }
-  };
-  load();
+      </div>
+    `;
+  } catch (e) {
+    el.innerHTML = `<div class="error-msg">${escapeHtml(e.message)}</div>`;
+  }
 }
 
 // ---- Notifications ----
@@ -861,23 +1037,16 @@ async function renderNotifications(el) {
         <div class="toolbar">
           <button class="btn btn-ghost btn-sm" id="mark-all">Отметить все прочитанными</button>
         </div>
-        ${list.length ? list.map(n => {
-          const type = (n.type || 'info').toLowerCase();
-          const typeClass = type === 'warning' ? 'pill-type-warning' : type === 'error' || type === 'danger' ? 'pill-type-error' : type === 'system' ? 'pill-type-system' : 'pill-type-info';
-          const prio = (n.priority || '').toLowerCase();
-          return `
-          <div class="notif-item ${n.is_read ? '' : 'unread'} ${prio === 'high' ? 'pill-priority-high' : ''}" data-id="${n.id}">
+        ${list.length ? list.map(n => `
+          <div class="notif-item ${n.is_read ? '' : 'unread'}" data-id="${n.id}">
             <div class="notif-content">
-              <div class="notif-title">
-                <span class="pill ${typeClass}" style="margin-right:6px">${escapeHtml((n.type || 'INFO').toUpperCase())}</span>
-                ${escapeHtml(n.title)}
-              </div>
+              <div class="notif-title">${escapeHtml(n.title)}</div>
               ${n.message ? `<div class="notif-msg">${escapeHtml(n.message)}</div>` : ''}
-              <div class="notif-time">${formatDate(n.created_at)}${prio ? ' · ' + escapeHtml(prio) : ''}</div>
+              <div class="notif-time">${formatDate(n.created_at)}</div>
             </div>
             ${!n.is_read ? `<button class="btn btn-ghost btn-sm mark-read" data-id="${n.id}">✓</button>` : ''}
-          </div>`;
-        }).join('') : '<div class="empty"><div class="empty-icon">🔔</div>Нет уведомлений</div>'}
+          </div>
+        `).join('') : '<div class="empty"><div class="empty-icon">🔔</div>Нет уведомлений</div>'}
       `;
       $('#mark-all')?.addEventListener('click', async () => {
         await api('/notifications', { method: 'POST', body: { action: 'mark_all_read' } });
@@ -1045,514 +1214,6 @@ async function renderAdmins(el) {
 
   load();
 }
-
-
-// ---- Profile ----
-async function renderProfile(el) {
-  try {
-    let profile = null;
-    try { profile = await api('/profile'); } catch { /* fallback to /me data */ }
-    const a = profile || state.admin || {};
-    const clr = a.clearance || state.clearance || CLEARANCE_BY_ROLE[a.role] || { level: 1, label: 'LEVEL-1 · Basic Access' };
-    const initials = (a.display_name || a.username || '?').slice(0, 2).toUpperCase();
-
-    el.innerHTML = `
-      <div class="profile-grid">
-        <div class="card" style="text-align:center">
-          <div class="profile-avatar">${escapeHtml(initials)}</div>
-          <div style="font-size:1.1rem;font-weight:700;margin-bottom:4px">${escapeHtml(a.display_name || '—')}</div>
-          <div style="font-family:var(--font-mono);font-size:0.75rem;color:var(--text-dim);margin-bottom:12px">@${escapeHtml(a.username || '—')}</div>
-          <span class="pill ${ROLE_PILL[a.role] || ''}">${escapeHtml(a.role_label || a.role || '—')}</span>
-          <div style="margin-top:10px"><span class="pill pill-type-warning">${escapeHtml(clr.label || 'LEVEL-1')}</span></div>
-        </div>
-        <div class="card">
-          <div class="card-header"><span class="card-title">Данные аккаунта</span></div>
-          <div class="profile-field"><span class="profile-field-label">Username</span><span class="profile-field-value">${escapeHtml(a.username || '—')}</span></div>
-          <div class="profile-field"><span class="profile-field-label">Роль</span><span class="profile-field-value">${escapeHtml(a.role_label || a.role || '—')}</span></div>
-          <div class="profile-field"><span class="profile-field-label">Clearance</span><span class="profile-field-value">${escapeHtml(clr.label || '—')}</span></div>
-          <div class="profile-field"><span class="profile-field-label">Статус</span><span class="profile-field-value"><span class="pill ${a.status === 'active' || !a.status ? 'pill-active' : 'pill-blocked'}">${escapeHtml(a.status || 'active')}</span></span></div>
-          <div class="profile-field"><span class="profile-field-label">Discord</span><span class="profile-field-value">${escapeHtml(a.discord || '—')}</span></div>
-          <div class="profile-field"><span class="profile-field-label">Регистрация</span><span class="profile-field-value">${formatDateOnly(a.joined_at || a.created_at)}</span></div>
-          <div class="profile-field"><span class="profile-field-label">Последняя активность</span><span class="profile-field-value">${formatDate(a.last_activity || a.updated_at)}</span></div>
-          ${a.actions_count != null ? `<div class="profile-field"><span class="profile-field-label">Действий</span><span class="profile-field-value">${a.actions_count}</span></div>` : ''}
-          ${a.extra_info ? `<div class="profile-field"><span class="profile-field-label">Инфо</span><span class="profile-field-value">${escapeHtml(a.extra_info)}</span></div>` : ''}
-        </div>
-      </div>
-      ${Array.isArray(a.recent_actions) && a.recent_actions.length ? `
-      <div class="card" style="margin-top:14px">
-        <div class="card-header"><span class="card-title">История действий</span></div>
-        <div class="table-wrap">
-          <table>
-            <thead><tr><th>Действие</th><th>Объект</th><th>Время</th></tr></thead>
-            <tbody>
-              ${a.recent_actions.map(x => `
-                <tr>
-                  <td>${escapeHtml(x.action)}</td>
-                  <td>${escapeHtml(x.details || x.target_type || '—')}</td>
-                  <td>${formatDate(x.created_at)}</td>
-                </tr>
-              `).join('')}
-            </tbody>
-          </table>
-        </div>
-      </div>` : ''}
-    `;
-  } catch (e) {
-    el.innerHTML = `<div class="error-msg">${escapeHtml(e.message)}</div>`;
-  }
-}
-
-// ---- SCP Database ----
-async function renderScp(el) {
-  const canManage = state.permissions.manage_scp || state.permissions.full_access || state.permissions.manage_admins;
-  let filters = { q: '', object_class: '', threat: '', status: '' };
-
-  const load = async () => {
-    try {
-      const params = new URLSearchParams();
-      if (filters.q) params.set('q', filters.q);
-      if (filters.object_class) params.set('object_class', filters.object_class);
-      if (filters.threat) params.set('threat_level', filters.threat);
-      if (filters.status) params.set('status', filters.status);
-      let list = [];
-      try {
-        const data = await api('/scp' + (params.toString() ? '?' + params.toString() : ''));
-        list = Array.isArray(data) ? data : (data.items || []);
-      } catch (err) {
-        el.innerHTML = `
-          <div class="card">
-            <div class="card-header"><span class="card-title">SCP Database</span></div>
-            <div class="empty">
-              <div class="empty-icon">🧪</div>
-              API /scp пока недоступен на бэкенде.<br>
-              <span style="font-size:0.75rem;opacity:0.7">Добавьте endpoint и таблицу scp_objects в D1.</span>
-            </div>
-            ${canManage ? '<div style="text-align:center;margin-top:12px"><button class="btn btn-primary" id="scp-create">+ Создать объект (когда API готов)</button></div>' : ''}
-          </div>`;
-        $('#scp-create')?.addEventListener('click', () => openScpModal());
-        return;
-      }
-
-      el.innerHTML = `
-        <div class="toolbar">
-          <input class="search-input" id="scp-search" placeholder="Поиск SCP…" value="${escapeHtml(filters.q)}" />
-          ${canManage ? '<button class="btn btn-primary" id="scp-create">+ Создать объект</button>' : ''}
-        </div>
-        <div class="scp-filters">
-          <select id="scp-class">
-            <option value="">Класс</option>
-            <option value="Safe" ${filters.object_class === 'Safe' ? 'selected' : ''}>Safe</option>
-            <option value="Euclid" ${filters.object_class === 'Euclid' ? 'selected' : ''}>Euclid</option>
-            <option value="Keter" ${filters.object_class === 'Keter' ? 'selected' : ''}>Keter</option>
-          </select>
-          <select id="scp-threat">
-            <option value="">Угроза</option>
-            <option value="Low">Low</option>
-            <option value="Medium">Medium</option>
-            <option value="High">High</option>
-            <option value="Critical">Critical</option>
-          </select>
-          <select id="scp-status">
-            <option value="">Статус</option>
-            <option value="Contained">Contained</option>
-            <option value="Under Investigation">Under Investigation</option>
-            <option value="Uncontained">Uncontained</option>
-          </select>
-          <button class="btn btn-ghost btn-sm" id="scp-filter-btn">Применить</button>
-        </div>
-        <div class="grid">
-          ${list.length ? list.map(o => {
-            const cls = (o.object_class || '').toLowerCase();
-            const threat = (o.threat_level || '').toLowerCase();
-            return `
-            <div class="card scp-card">
-              <div class="card-header">
-                <span class="scp-id">${escapeHtml(o.scp_id || o.code || 'SCP-???')}</span>
-                ${canManage ? `<div>
-                  <button class="btn btn-ghost btn-sm scp-edit" data-id="${o.id}">✎</button>
-                  <button class="btn btn-danger btn-sm scp-del" data-id="${o.id}">✕</button>
-                </div>` : ''}
-              </div>
-              <div class="scp-meta-row">
-                <span class="pill ${cls === 'safe' ? 'pill-safe' : cls === 'euclid' ? 'pill-euclid' : 'pill-keter'}">${escapeHtml(o.object_class || '—')}</span>
-                <span class="pill pill-threat-${threat || 'low'}">${escapeHtml(o.threat_level || '—')}</span>
-                <span class="pill pill-type-system">${escapeHtml(o.status || '—')}</span>
-              </div>
-              <div class="scp-desc">${escapeHtml((o.description || '').slice(0, 280))}${(o.description || '').length > 280 ? '…' : ''}</div>
-              <div class="card-meta">Обновлено: ${formatDate(o.updated_at || o.created_at)}</div>
-            </div>`;
-          }).join('') : '<div class="empty"><div class="empty-icon">🧪</div>SCP-объектов пока нет</div>'}
-        </div>
-      `;
-
-      $('#scp-search')?.addEventListener('keydown', e => {
-        if (e.key === 'Enter') { filters.q = e.target.value.trim(); load(); }
-      });
-      $('#scp-filter-btn')?.addEventListener('click', () => {
-        filters.object_class = $('#scp-class').value;
-        filters.threat = $('#scp-threat').value;
-        filters.status = $('#scp-status').value;
-        filters.q = $('#scp-search')?.value.trim() || filters.q;
-        load();
-      });
-      if (canManage) {
-        $('#scp-create')?.addEventListener('click', () => openScpModal());
-        $$('.scp-edit').forEach(b => b.onclick = () => openScpModal(b.dataset.id));
-        $$('.scp-del').forEach(b => b.onclick = async () => {
-          if (!confirm('Удалить SCP-объект?')) return;
-          await api(`/scp/${b.dataset.id}`, { method: 'DELETE' });
-          load();
-        });
-      }
-    } catch (e) {
-      el.innerHTML = `<div class="error-msg">${escapeHtml(e.message)}</div>`;
-    }
-  };
-
-  async function openScpModal(id = null) {
-    let item = { scp_id: '', object_class: 'Safe', threat_level: 'Low', status: 'Contained', description: '', containment_procedures: '' };
-    if (id) {
-      try { item = await api(`/scp/${id}`); } catch { alert('Не удалось загрузить объект'); return; }
-    }
-    openModal(id ? 'Редактировать SCP' : 'Новый SCP-объект', `
-      <div class="form-group"><label>SCP ID</label><input id="m-scpid" value="${escapeHtml(item.scp_id || item.code || '')}" placeholder="SCP-173" /></div>
-      <div class="form-group"><label>Object Class</label>
-        <select id="m-class">
-          <option value="Safe" ${item.object_class === 'Safe' ? 'selected' : ''}>Safe</option>
-          <option value="Euclid" ${item.object_class === 'Euclid' ? 'selected' : ''}>Euclid</option>
-          <option value="Keter" ${item.object_class === 'Keter' ? 'selected' : ''}>Keter</option>
-        </select>
-      </div>
-      <div class="form-group"><label>Threat Level</label>
-        <select id="m-threat">
-          <option value="Low">Low</option><option value="Medium">Medium</option>
-          <option value="High">High</option><option value="Critical">Critical</option>
-        </select>
-      </div>
-      <div class="form-group"><label>Status</label>
-        <select id="m-status">
-          <option value="Contained">Contained</option>
-          <option value="Under Investigation">Under Investigation</option>
-          <option value="Uncontained">Uncontained</option>
-        </select>
-      </div>
-      <div class="form-group"><label>Description</label><textarea id="m-desc">${escapeHtml(item.description || '')}</textarea></div>
-      <div class="form-group"><label>Containment Procedures</label><textarea id="m-contain">${escapeHtml(item.containment_procedures || '')}</textarea></div>
-    `, `
-      <button class="btn btn-ghost" data-close>Отмена</button>
-      <button class="btn btn-primary" id="m-save">Сохранить</button>
-    `);
-    if (item.threat_level) $('#m-threat').value = item.threat_level;
-    if (item.status) $('#m-status').value = item.status;
-    $('[data-close]').onclick = closeModal;
-    $('#m-save').onclick = async () => {
-      const body = {
-        scp_id: $('#m-scpid').value.trim(),
-        object_class: $('#m-class').value,
-        threat_level: $('#m-threat').value,
-        status: $('#m-status').value,
-        description: $('#m-desc').value.trim(),
-        containment_procedures: $('#m-contain').value.trim() || null
-      };
-      if (!body.scp_id || !body.description) return alert('SCP ID и описание обязательны');
-      try {
-        if (id) await api(`/scp/${id}`, { method: 'PUT', body });
-        else await api('/scp', { method: 'POST', body });
-        closeModal();
-        load();
-      } catch (e) { alert(e.message); }
-    };
-  }
-
-  load();
-}
-
-// ---- Terminal ----
-async function renderTerminal(el) {
-  const history = [];
-  let histIdx = -1;
-
-  el.innerHTML = `
-    <div class="terminal-wrap">
-      <div class="terminal-header">
-        <span class="terminal-dot"></span>
-        SCP FOUNDATION SECURE TERMINAL · Arca-13
-      </div>
-      <div class="terminal-body" id="terminal-out"></div>
-      <div class="terminal-input-row">
-        <span class="prompt">></span>
-        <input type="text" id="terminal-input" autocomplete="off" spellcheck="false" placeholder="help" />
-      </div>
-    </div>
-  `;
-
-  const out = $('#terminal-out');
-  const input = $('#terminal-input');
-
-  function print(line, cls = 'terminal-out') {
-    const div = document.createElement('div');
-    div.className = 'terminal-line ' + cls;
-    div.textContent = line;
-    out.appendChild(div);
-    out.scrollTop = out.scrollHeight;
-  }
-
-  print('╔══════════════════════════════════════════╗', 'terminal-out');
-  print('║  SCP FOUNDATION SECURE TERMINAL          ║', 'terminal-out');
-  print('║  Site-Arca-13 · Access Restricted        ║', 'terminal-out');
-  print('╚══════════════════════════════════════════╝', 'terminal-out');
-  print('');
-  print('Type "help" for available commands.', 'terminal-out');
-
-  const commands = {
-    help: () => {
-      print('Available commands:', 'terminal-out');
-      print('  help           — this list', 'terminal-out');
-      print('  status         — system status', 'terminal-out');
-      print('  profile        — current user profile', 'terminal-out');
-      print('  notifications  — unread count', 'terminal-out');
-      print('  logs           — recent audit entries', 'terminal-out');
-      print('  scp [id]       — list or show SCP', 'terminal-out');
-      print('  clear          — clear screen', 'terminal-out');
-    },
-    status: async () => {
-      print('> SYSTEM STATUS', 'terminal-cmd');
-      try {
-        const s = await api('/system/status');
-        Object.entries(s).forEach(([k, v]) => print(`  ${k.toUpperCase()}: ${String(v).toUpperCase()}`, 'terminal-out'));
-      } catch {
-        print('  DATABASE: ONLINE (assumed)', 'terminal-out');
-        print('  API: ONLINE', 'terminal-out');
-        print('  AUTHENTICATION: ONLINE', 'terminal-out');
-        print('  SYSTEM: OPERATIONAL', 'terminal-out');
-        print('  (endpoint /system/status optional)', 'terminal-out');
-      }
-    },
-    profile: () => {
-      const a = state.admin || {};
-      const clr = state.clearance || CLEARANCE_BY_ROLE[a.role] || {};
-      print(`  USER: ${a.display_name || '—'} (@${a.username || '—'})`, 'terminal-out');
-      print(`  ROLE: ${a.role_label || a.role || '—'}`, 'terminal-out');
-      print(`  CLEARANCE: ${clr.label || 'LEVEL-1'}`, 'terminal-out');
-      print(`  STATUS: ${a.status || 'active'}`, 'terminal-out');
-    },
-    notifications: async () => {
-      try {
-        const list = await api('/notifications');
-        const unread = list.filter(n => !n.is_read).length;
-        print(`  Unread notifications: ${unread}`, 'terminal-out');
-        list.filter(n => !n.is_read).slice(0, 5).forEach(n => {
-          print(`  · ${n.title}`, 'terminal-out');
-        });
-      } catch (e) {
-        print(`  Error: ${e.message}`, 'terminal-err');
-      }
-    },
-    logs: async () => {
-      try {
-        const list = await api('/logs?limit=8');
-        const rows = Array.isArray(list) ? list : (list.items || []);
-        rows.forEach(a => {
-          print(`  ${formatDate(a.created_at)}  ${a.admin_name || '—'}  ${a.action}  ${a.details || a.target_type || ''}`, 'terminal-out');
-        });
-        if (!rows.length) print('  No entries', 'terminal-out');
-      } catch (e) {
-        print(`  Error: ${e.message}`, 'terminal-err');
-      }
-    },
-    scp: async (arg) => {
-      try {
-        if (arg) {
-          const data = await api('/scp?q=' + encodeURIComponent(arg));
-          const list = Array.isArray(data) ? data : (data.items || []);
-          const o = list[0];
-          if (!o) { print('  Object not found', 'terminal-err'); return; }
-          print(`  ${o.scp_id || o.code}  [${o.object_class}]  Threat: ${o.threat_level}  Status: ${o.status}`, 'terminal-out');
-          print(`  ${(o.description || '').slice(0, 200)}`, 'terminal-out');
-        } else {
-          const data = await api('/scp');
-          const list = Array.isArray(data) ? data : (data.items || []);
-          print(`  SCP objects: ${list.length}`, 'terminal-out');
-          list.slice(0, 10).forEach(o => print(`  · ${o.scp_id || o.code}  ${o.object_class}  ${o.status}`, 'terminal-out'));
-        }
-      } catch {
-        print('  SCP API not available yet. Add /api/scp on backend.', 'terminal-err');
-      }
-    },
-    clear: () => { out.innerHTML = ''; }
-  };
-
-  async function run(cmdLine) {
-    const trimmed = cmdLine.trim();
-    if (!trimmed) return;
-    history.push(trimmed);
-    histIdx = history.length;
-    print('> ' + trimmed, 'terminal-cmd');
-    const [cmd, ...rest] = trimmed.split(/\s+/);
-    const arg = rest.join(' ');
-    const fn = commands[cmd.toLowerCase()];
-    if (fn) await fn(arg);
-    else print(`Unknown command: ${cmd}. Type "help".`, 'terminal-err');
-  }
-
-  input.addEventListener('keydown', async (e) => {
-    if (e.key === 'Enter') {
-      const v = input.value;
-      input.value = '';
-      await run(v);
-    } else if (e.key === 'ArrowUp') {
-      e.preventDefault();
-      if (histIdx > 0) { histIdx--; input.value = history[histIdx] || ''; }
-    } else if (e.key === 'ArrowDown') {
-      e.preventDefault();
-      if (histIdx < history.length - 1) { histIdx++; input.value = history[histIdx] || ''; }
-      else { histIdx = history.length; input.value = ''; }
-    }
-  });
-  setTimeout(() => input.focus(), 100);
-}
-
-// ---- Global Search ----
-function openGlobalSearch() {
-  const overlay = $('#search-overlay');
-  if (!overlay) return;
-  overlay.classList.remove('hidden');
-  overlay.setAttribute('aria-hidden', 'false');
-  const input = $('#global-search-input');
-  input.value = '';
-  $('#search-results').innerHTML = '<div class="search-hint">Начните вводить запрос… · Ctrl+K</div>';
-  setTimeout(() => input.focus(), 50);
-}
-
-function closeGlobalSearch() {
-  const overlay = $('#search-overlay');
-  if (!overlay) return;
-  overlay.classList.add('hidden');
-  overlay.setAttribute('aria-hidden', 'true');
-}
-
-let searchDebounce = null;
-async function runGlobalSearch(q) {
-  const box = $('#search-results');
-  if (!q || q.length < 2) {
-    box.innerHTML = '<div class="search-hint">Введите минимум 2 символа…</div>';
-    return;
-  }
-  box.innerHTML = '<div class="search-loading">Поиск…</div>';
-  try {
-    let data = null;
-    try {
-      data = await api('/search?q=' + encodeURIComponent(q));
-    } catch {
-      data = await clientSideSearch(q);
-    }
-    renderSearchResults(data, q);
-  } catch (e) {
-    box.innerHTML = `<div class="search-error">Ошибка: ${escapeHtml(e.message)}</div>`;
-  }
-}
-
-async function clientSideSearch(q) {
-  const lower = q.toLowerCase();
-  const groups = {};
-  const tryFetch = async (path, key, mapFn) => {
-    try {
-      const list = await api(path);
-      const arr = Array.isArray(list) ? list : (list.items || []);
-      const matched = arr.filter(mapFn).slice(0, 8);
-      if (matched.length) groups[key] = matched;
-    } catch {}
-  };
-  await Promise.all([
-    tryFetch('/notes', 'notes', n => (n.title + ' ' + (n.content || '')).toLowerCase().includes(lower)),
-    tryFetch('/news', 'news', n => (n.title + ' ' + (n.content || '')).toLowerCase().includes(lower)),
-    tryFetch('/events', 'events', e => (e.title + ' ' + (e.description || '')).toLowerCase().includes(lower)),
-    tryFetch('/roster', 'roster', a => ((a.display_name || '') + ' ' + (a.username || '')).toLowerCase().includes(lower)),
-    tryFetch('/scp', 'scp', o => ((o.scp_id || o.code || '') + ' ' + (o.description || '')).toLowerCase().includes(lower))
-  ]);
-  return groups;
-}
-
-function renderSearchResults(data, q) {
-  const box = $('#search-results');
-  const labels = { notes: 'Заметки', news: 'Новости', events: 'События', roster: 'Состав', scp: 'SCP', admins: 'Админы' };
-  const routes = { notes: '#/notes', news: '#/news', events: '#/events', roster: '#/roster', scp: '#/scp', admins: '#/admins' };
-  const keys = Object.keys(data || {}).filter(k => (data[k] || []).length);
-  if (!keys.length) {
-    box.innerHTML = `<div class="search-empty">Ничего не найдено по «${escapeHtml(q)}»</div>`;
-    return;
-  }
-  box.innerHTML = keys.map(k => `
-    <div class="search-group">
-      <div class="search-group-title">${labels[k] || k}</div>
-      ${(data[k] || []).map(item => {
-        const title = item.title || item.display_name || item.scp_id || item.code || item.username || '—';
-        const meta = item.author_name || item.role_label || item.object_class || item.event_date || item.username || '';
-        return `<div class="search-item" data-route="${routes[k] || '#/dashboard'}">
-          <div>
-            <div class="search-item-title">${escapeHtml(title)}</div>
-            ${meta ? `<div class="search-item-meta">${escapeHtml(String(meta))}</div>` : ''}
-          </div>
-          <span class="search-item-type">${labels[k] || k}</span>
-        </div>`;
-      }).join('')}
-    </div>
-  `).join('');
-  $$('.search-item', box).forEach(el => {
-    el.onclick = () => {
-      closeGlobalSearch();
-      location.hash = el.dataset.route;
-    };
-  });
-}
-
-// ---- Live polling (notifications badge) ----
-function startLivePolling() {
-  if (state.pollTimer) clearInterval(state.pollTimer);
-  state.pollTimer = setInterval(() => {
-    if (!state.admin) return;
-    loadNotifBadge();
-  }, 45000);
-}
-
-// ---- Hotkeys ----
-document.addEventListener('keydown', (e) => {
-  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
-    e.preventDefault();
-    if (state.admin) openGlobalSearch();
-    return;
-  }
-  if ((e.ctrlKey || e.metaKey) && e.key === '/') {
-    e.preventDefault();
-    if (state.admin) openGlobalSearch();
-    return;
-  }
-  if (e.key === 'Escape') {
-    if (!$('#search-overlay')?.classList.contains('hidden')) {
-      closeGlobalSearch();
-      return;
-    }
-    if ($('#modal-root')?.innerHTML) {
-      closeModal();
-      return;
-    }
-    closeSidebar();
-  }
-});
-
-document.addEventListener('DOMContentLoaded', () => {
-  $('#global-search-btn')?.addEventListener('click', () => openGlobalSearch());
-  $('#search-overlay')?.addEventListener('click', (e) => {
-    if (e.target.id === 'search-overlay') closeGlobalSearch();
-  });
-  $('#global-search-input')?.addEventListener('input', (e) => {
-    clearTimeout(searchDebounce);
-    searchDebounce = setTimeout(() => runGlobalSearch(e.target.value.trim()), 280);
-  });
-  $('#global-search-input')?.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') closeGlobalSearch();
-  });
-});
 
 // Init
 checkAuth();

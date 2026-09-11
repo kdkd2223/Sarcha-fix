@@ -82,11 +82,11 @@
           <a href="#/events" data-page="events" class="nav-item">
             <span class="nav-icon">📅</span> События
           </a>
-          <a href="#/scp" data-page="scp" class="nav-item">
-            <span class="nav-icon">🧪</span> SCP Database
-          </a>
           <a href="#/rules" data-page="rules" class="nav-item">
             <span class="nav-icon">📚</span> Правила
+          </a>
+          <a href="#/commands" data-page="commands" class="nav-item">
+            <span class="nav-icon">🤖</span> Команды бота
           </a>
           <a href="#/stats" data-page="stats" class="nav-item" data-perm="view_stats">
             <span class="nav-icon">📊</span> Статистика
@@ -101,12 +101,6 @@
           <a href="#/roster" data-page="roster" class="nav-item">
             <span class="nav-icon">👥</span> Состав
           </a>
-          <a href="#/profile" data-page="profile" class="nav-item">
-            <span class="nav-icon">👤</span> Профиль
-          </a>
-          <a href="#/terminal" data-page="terminal" class="nav-item">
-            <span class="nav-icon">⬛</span> Terminal
-          </a>
           <a href="#/admins" data-page="admins" class="nav-item" data-perm="manage_admins">
             <span class="nav-icon">⚙️</span> Управление
           </a>
@@ -115,7 +109,6 @@
           <div class="user-info">
             <div class="user-name" id="sidebar-name">—</div>
             <div class="user-role" id="sidebar-role">—</div>
-            <div class="user-clearance" id="sidebar-clearance">—</div>
           </div>
           <button id="logout-btn" class="btn btn-ghost btn-sm">Выйти</button>
         </div>
@@ -132,7 +125,6 @@
           </button>
           <h2 id="page-title">Главная</h2>
           <div class="topbar-right">
-            <button type="button" class="btn btn-ghost btn-sm" id="global-search-btn" title="Поиск (Ctrl+K)">⌕ Поиск</button>
             <span id="topbar-user"></span>
           </div>
         </header>
@@ -144,19 +136,6 @@
   </div>
 
   <div id="modal-root"></div>
-  <!-- Global Search overlay -->
-  <div id="search-overlay" class="search-overlay hidden" aria-hidden="true">
-    <div class="search-modal">
-      <div class="search-header">
-        <span class="search-icon">⌕</span>
-        <input type="text" id="global-search-input" placeholder="Поиск по SCP, заметкам, новостям, событиям, составу…" autocomplete="off" />
-        <kbd class="search-kbd">ESC</kbd>
-      </div>
-      <div id="search-results" class="search-results">
-        <div class="search-hint">Начните вводить запрос… · Ctrl+K</div>
-      </div>
-    </div>
-  </div>
   <script src="/app.js"></script>
 </body>
 </html>
