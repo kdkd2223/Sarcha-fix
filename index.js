@@ -675,6 +675,32 @@ async function handleNotifications(request, env) {
   return error('Method not allowed', 405);
 }
 
+// ---- System Status (real checks, read-only, no schema changes) ----
+async function handleSystemStatus(request, env) {
+  const { session, error: err } = await requireAuth(request, env);
+  if (err) return err;
+
+  let database = 'offline';
+  let dbLatencyMs = null;
+  try {
+    const t0 = Date.now();
+    await env.DB.prepare('SELECT 1 as ok').first();
+    dbLatencyMs = Date.now() - t0;
+    database = 'online';
+  } catch (e) {
+    console.error('system-status db check failed', e);
+    database = 'offline';
+  }
+
+  return json({
+    database,
+    db_latency_ms: dbLatencyMs,
+    api: 'online',
+    authentication: 'online',
+    checked_at: new Date().toISOString()
+  });
+}
+
 // ---- Roster ----
 async function handleRoster(request, env) {
   const { session, error: err } = await requireAuth(request, env, 'view_roster');
@@ -882,6 +908,9 @@ export default {
         }
         if (path === '/api/roster') {
           return await handleRoster(request, env);
+        }
+        if (path === '/api/system-status') {
+          return await handleSystemStatus(request, env);
         }
         if (path === '/api/admins') {
           return await handleAdmins(request, env);
